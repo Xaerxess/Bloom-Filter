@@ -1,5 +1,6 @@
-Revision history for Perl extension Bloom::Filter.
+Revision history for Perl extension Filter.
 
-0.01  Fri Mar 26 10:09:38 2004
-	- original version
+0.01  Fri Mar 26 10:45:51 2004
+	- original version; created by h2xs 1.21 with options
+		-XPA Filter
 

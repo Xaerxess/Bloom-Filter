@@ -5,148 +5,145 @@ use warnings;
 use Carp;
 use Digest::SHA1 qw/sha1 sha1_base64/;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
+
+Bloom::Filter - Sample Perl Bloom filter implementation
+
+=head1 DESCRIPTION
+
+A Bloom filter is a probabilistic algorithm for doing existence tests
+in less memory than a full list of keys would require.  The tradeoff to
+using Bloom filters is a certain configurable risk of false positives. 
+This module implements a simple Bloom filter with configurable capacity
+and false positive rate. Bloom filters were first described in a 1970 
+paper by Burton Bloom, see http://portal.acm.org/citation.cfm?id=362692&dl=ACM&coll=portal.
+
+=head1 SYNOPSIS
+
+	use Bloom::Filter
+
+	my $bf = Bloom::Filter->new( capacity => 10, error_rate => .001 );
+
+	$bf->add( @keys );
+
+	while ( <> ) {
+		chomp;
+		print "Found $_\n" if $bf->check( $_ );
+	}
+
+=head1 CONSTRUCTORS
 
 =over 
 
 =item new %PARAMS
 
-Create a brand new instance.  Allowable params are C<error_rate>, C<min_length>.
+Create a brand new instance.  Allowable params are C<error_rate>, C<capacity>.
 
 =cut
 
 sub new {
 	my ( $class, %params ) = @_;
 
-	bless {  
+	my $self = 
+		{  
+			 # some defaults
 			 error_rate => 0.001, 
-		     min_length => 20, 
-		     filter_length => 20,
-			 %params, 
-			 keys => {}
-		  }, $class;
+		     capacity => 100, 
+		     
+		     %params,
+		     
+		     # internal data
+		     key_count => 0,
+		     filter_length => 0,
+		     num_hash_funcs => 0,
+		     salts => [],
+		  };
+	bless $self, $class;
+	$self->init();
+	return $self;
+}
+
+
+=item init
+
+Calculates the best number of hash functions and optimum filter length,
+creates some random salts, and generates a blank bit vector.  Called
+automatically by constructor.
+
+=cut
+
+sub init {
+	my ( $self ) = @_;
+	
+	# some sanity checks
+	croak "Capacity must be greater than zero" unless $self->{capacity};
+	croak "Error rate must be greater than zero" unless $self->{error_rate};
+	croak "Error rate cannot exceed 1" unless $self->{error_rate} < 1;
+	
+	my ( $length, $num_funcs ) =
+		$self->_calculate_shortest_filter_length( $self->{capacity}, $self->{error_rate} );
+	
+	$self->{num_hash_funcs} = $num_funcs;
+	$self->{filter_length} = $length;
+	
+	# create some random salts;
+	my %collisions;
+	while ( scalar keys %collisions < $self->{num_hash_funcs} ) {
+		$collisions{rand()}++;
+	}
+	$self->{salts} = [ keys %collisions ];
+	
+	# make an empty filter
+	$self->{filter} = pack( "b*", '0' x $self->{filter_length} );
+	
+	return 1;
 }
 
 
 =back
 
-=head1 PUBLIC METHODS
+=head1 ACCESSORS
 
 =over 
 
-=item add @EMAIL
+=item capacity
 
-Adds email addresses to the filter.  You can either add email addresses 
-directly, or add the output of a sha1_base64 hash.  
-
-=cut
-
-sub add {
-	my ( $self, @addresses ) = @_;
-
-	return unless @addresses;
-	$self->{rebuild_flag} = 1;
-	
-	my $list = $self->{contents};
-	foreach my $add ( @addresses ) {
-		# convert email to SHA1 hash if necessary
-		$add = sha1_base64( $add ) if $add =~ /@/o;
-		$list->{$add}++;
-	}
-	$self->{reindex_flag} = 1;
-}
-
-=item check ARGS
-
-Checks the provided arg list against the bloom filter,
-and returns a list of equivalent length, with true or
-false values depending on whether there was a match.
-Takes either email addresses or sha1_base64 hashes as args.
-
-=cut 
-
-sub check {	
-
-	my ( $self, @keys ) = @_;
-
-	$self->build_filter() if $self->{rebuild_flag} 
-						  or !defined $self->{filter};
-	
-	return unless @keys;
-
-	my $salt_count = scalar $self->{salts};
-
-	my @result;
-
-	# A match occurs if every bit we check is on
-	foreach my $key ( @keys ) {
-		my $mask = $self->_make_bitmask( $key );		
-		push @result, ($mask == ( $mask & $self->{filter} ));
-	}
-	return ( wantarray() ? @result : $result[0] );
-}
-
-=item clear
-
-Removes all addresses from the filter
+Returns the total capacity of the Bloom filter
 
 =cut
 
-sub clear {
-	my ( $self ) = @_;
-	$self->{contents} = {};
-	$self->{salts} = [];
-	$self->{rebuild_flag} = 1;
-}
+sub capacity { $_[0]->{capacity} };
 
+=item error_rate
 
-
-=item build_filter
-
-Builds a bloom filter and stores it internally
+Returns the configured maximum error rate
 
 =cut
 
-sub build_filter {
-	my ( $self ) = @_;
+sub error_rate { $_[0]->{error_rate} };
 
-	croak "No salts have been set"
-		unless exists $self->{available_salts}
-		and ref $self->{available_salts}
-		and ref $self->{available_salts} eq 'ARRAY';
+=item length
 
-	my ( $length ) = $self->_calculate_filter_length();
+Returns the length of the Bloom filter in bits
 
-	# expand the filter length if necessary
-	# but don't let the filter shrink below the
-	# minimum allowed size
+=cut
 
-	if ( $length > $self->{min_length} ) {
-		if ( $length > $self->{filter_length} ) {
-			$self->{filter_length} = $length;
-		}
-	} else { 
-		$self->{filter_length} = $self->{min_length};
-	}
+sub length { $_[0]->{filter_length} };
 
-	my $bf = pack( "b*", '0' x $self->{filter_length} );
+=item key_count
 
-	# Hash our list of emails into the empty filter
+Returns the number of items currently stored in the filter
 
-	foreach my $key ( keys %{ $self->{contents}} ) {
-		my $mask = $self->_make_bitmask( $key );
-		$bf = $bf | $mask;
-	}
+=cut
 
-	$self->{rebuild_flag} = 0;
-	$self->{filter} = $bf;
-}
+sub key_count { $_[0]->{key_count} };
+
 
 =item on_bits
 
-Returns the number of 'on' bits in the bloom filter
+Returns the number of 'on' bits in the filter
 
 =cut
 
@@ -156,54 +153,79 @@ sub on_bits {
 	return unpack( "%32b*",  $self->{filter})
 }
 
+=item salts 
 
-
-=item get_salts 
-
-Returns the current list of salts
+Returns the list of salts used to create the hash functions
 
 =cut
 
-sub get_salts { 
+sub salts { 
 	my ( $self ) = @_;
 	return unless exists $self->{salts}
 		and ref $self->{salts}
 		and ref $self->{salts} eq 'ARRAY';
 
-	return @{ $_[0]->{salts} };
+	return @{ $self->{salts} };
 }
 
-=item set_salts ARRAY
 
-Sets the salts to be used with this filter
+=back
+
+=head1 PUBLIC METHODS
+
+=over
+
+=item add @KEYS
+
+Adds the list of keys to the filter.   Will fail, return C<undef> and complain
+if the number of keys in the filter exceeds the configured capacity.
 
 =cut
 
-sub set_salts {
-	my ( $self, @salts ) = @_;
-	$self->{available_salts} = \@salts;
-	$self->{salts} = \@salts;
-	$self->{reindex_flag} = 1;
-	return scalar @salts;
+sub add {
+	my ( $self, @keys ) = @_;
+
+	return unless @keys;
+	# Hash our list of emails into the empty filter
+
+	foreach my $key ( @keys ) {
+		if ($self->{key_count}++ > ($self->{capacity} - 1) ) {	
+			carp "Exceeded filter capacity";
+			return;
+		}
+		my $mask = $self->_make_bitmask( $key );
+		$self->{filter} = $self->{filter} | $mask;
+	}
+	return 1;
 }
 
-=item set_error_rate RATE
 
-Sets the maximum false positive rate on the filter to RATE.  RATE
-must be a number between 0 and 1.
 
-=cut
+=item check @KEYS
 
-sub set_error_rate {
-	my ( $self, $err_rate ) = @_;
-	croak "Out of bounds value for error rate" unless
-		$err_rate > 0 and
-		$err_rate < 1;
+Checks the provided key list against the Bloom filter,
+and returns a list of equivalent length, with true or
+false values depending on whether there was a match.
 
-	$self->{reindex_flag} = 1;
-	$self->{error_rate} = $err_rate;
+=cut 
 
+sub check {	
+
+	my ( $self, @keys ) = @_;
+	
+	return unless @keys;
+	my @result;
+
+	# A match occurs if every bit we check is on
+	foreach my $key ( @keys ) {
+		my $mask = $self->_make_bitmask( $key );		
+		push @result, ($mask eq ( $mask & $self->{filter} ));
+	}
+	return ( wantarray() ? @result : $result[0] );
 }
+
+
+
 
 =back
 
@@ -211,9 +233,38 @@ sub set_error_rate {
 
 =over
 
-=item _make_bitmask
 
-Given a key, hash it using the list of salts and return a bitmask
+=item _calculate_shortest_filter_length CAPACITY ERR_RATE
+
+Given a desired error rate and maximum capacity, returns the optimum
+combination of vector length (in bits) and number of hash functions
+to use in building the filter, where "optimum" means shortest vector length.
+
+=cut
+
+sub _calculate_shortest_filter_length {
+        my ( $self, $num_keys, $error_rate ) = @_;
+        my $lowest_m;
+        my $best_k = 1;
+
+        foreach my $k ( 1..100 ) {
+                my $m = (-1 * $k * $num_keys) / 
+                        ( log( 1 - ($error_rate ** (1/$k))));
+
+                if ( !defined $lowest_m or ($m < $lowest_m) ) {
+                        $lowest_m = $m;
+                        $best_k   = $k;
+                }
+        }
+        $lowest_m = int( $lowest_m ) + 1;
+        return ( $lowest_m, $best_k );
+} 
+
+
+
+=item _make_bitmask KEY
+
+Given a key, hashes it using the list of salts and returns a bitmask
 the same length as the Bloom filter.  Note that Perl will pad the 
 bitmask out with zeroes so it's a muliple of 8.
 
@@ -229,7 +280,6 @@ sub _make_bitmask {
 
 	my $mask = pack( "b*", '0' x $self->{filter_length});
 
-	#print "\n====\n";
 	foreach my $salt ( @salts ){ 
 
 		my $hash = sha1( $key, $salt );
@@ -255,45 +305,7 @@ sub _make_bitmask {
 	return $mask;
 }
 
-=item _calculate_filter_length
 
-Using the stored information for number of salts, number of items, and
-desired error rate, calculate how long to make the filter string to 
-ensure the error rate stays within bounds.
-
-=cut
-
-sub _calculate_filter_length {
-
-	my ( $self ) = @_;
-
-	return unless $self->{contents};
-	return unless $self->{available_salts};
-
-	# forumla is 
-	# m = -kn / ( ln( 1 - c ^ 1/k ) )
-
-	my $salt_count  = scalar @{ $self->{available_salts} };
-	my $c = $self->{error_rate} || croak "error rate not set";
-	my $n = scalar keys %{ $self->{contents} };
-	my $min_m = 10000000000;
-	my $opt_k;
-	foreach my $k ( 1.. $salt_count ){
-
-		my $m = (-1 * $k * $n) / ( log( 1 - ($c ** (1/$k))));
-
-		if ( !defined $min_m or ($m < $min_m) ){
-			 $min_m = $m;
-			 $opt_k = $k;
-		}
-	}
-	my $m = int( $min_m) + 1;
-
-	my @available = @{$self->{available_salts}};
-	my @use_salts = splice( @available, 0, $opt_k );
-	$self->{salts} = \@use_salts;
-	return ( $m );
-}
 
 =back
 
@@ -303,11 +315,10 @@ Maciej Ceglowski E<lt>maciej@ceglowski.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-(c) 2004 Maciej Ceglowski, Joshua Schachter
+(c) 2004 Maciej Ceglowski
 
 This is free software, distributed under version 2
-of the GNU Public License (GPL).  See L<LICENSE> for
-full text.
+of the GNU Public License (GPL).
 
 =cut
 

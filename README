@@ -1,7 +1,16 @@
-Bloom::Filter version 0.01
+Filter version 0.01
 ===================
 
-A pure-perl implementation of Bloom filters.
+The README is used to introduce the module and provide instructions on
+how to install the module, any machine dependencies it may have (for
+example C compilers and installed libraries) and any other information
+that should be provided before the module is installed.
+
+A README file is required for CPAN modules since CPAN extracts the
+README file from a module distribution so that people browsing the
+archive can use it get an idea of the modules uses. It is usually a
+good idea to provide version information here so that people can
+decide whether fixes for the module are worth downloading.
 
 INSTALLATION
 
@@ -16,12 +25,11 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  Digest::SHA1
+  blah blah blah
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2004 Maciej Ceglowski
+Put the correct copyright and licence information here.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+Copyright (C) 2004 A. U. Thor blah blah blah
 
