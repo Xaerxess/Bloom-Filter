@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use Digest::SHA1 qw/sha1 sha1_base64/;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 NAME
 
@@ -98,6 +98,10 @@ sub init {
 	# make an empty filter
 	$self->{filter} = pack( "b*", '0' x $self->{filter_length} );
 	
+	# make some blank vectors to use
+	$self->{blankmask} = pack( "b*", '0' x $self->{filter_length});
+	$self->{blankvec} = pack( "N", 0 ); 
+	
 	return 1;
 }
 
@@ -187,15 +191,44 @@ sub add {
 
 	return unless @keys;
 	# Hash our list of emails into the empty filter
+	my @salts = @{ $self->{salts} }
+			or croak "No salts found, cannot make bitmask";
 
+	my $mask = $self->{blankmask};
 	foreach my $key ( @keys ) {
 		if ($self->{key_count}++ > ($self->{capacity} - 1) ) {	
 			carp "Exceeded filter capacity";
 			return;
 		}
-		my $mask = $self->_make_bitmask( $key );
-		$self->{filter} = $self->{filter} | $mask;
+	
+		foreach my $salt ( @salts ){ 
+	
+			my $hash = sha1( $key, $salt );
+	
+			# blank 32 bit vector
+			my $vec = $self->{blankvec};
+	
+			# split the 160-bit hash into five 32-bit ints
+			# and XOR the pieces together
+	
+			my @pieces =  map { pack( "N", $_ ) } unpack("N*", $hash );
+			$vec = $_ ^ $vec foreach @pieces;	
+	
+			# Calculate bit offset by modding
+	
+			my $result = unpack( "N", $vec );
+	
+			
+			my $bit_offset = $result % $self->{filter_length};
+			vec( $mask, $bit_offset, 1 ) = 1;	
+			#undef $result;
+		}
+	
+
+		#my $mask = $self->_make_bitmask( $key );
+		
 	}
+	$self->{filter} = $self->{filter} | $mask;
 	return 1;
 }
 
@@ -278,14 +311,14 @@ sub _make_bitmask {
 	my @salts = @{ $self->{salts} }
 		or croak "No salts found, cannot make bitmask";
 
-	my $mask = pack( "b*", '0' x $self->{filter_length});
+	my $mask = $self->{blankmask};
 
 	foreach my $salt ( @salts ){ 
 
 		my $hash = sha1( $key, $salt );
 
 		# blank 32 bit vector
-		my $vec = pack( "N", 0 ); 
+		my $vec = $self->{blankvec};
 
 		# split the 160-bit hash into five 32-bit ints
 		# and XOR the pieces together
