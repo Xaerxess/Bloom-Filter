@@ -5,12 +5,12 @@ use warnings;
 use Carp;
 use Digest::SHA1 qw/sha1 sha1_base64/;
 
-our $VERSION = '0.03';
+our $VERSION = '1.0';
 
 =head1 NAME
-
+    
 Bloom::Filter - Sample Perl Bloom filter implementation
-
+    
 =head1 DESCRIPTION
 
 A Bloom filter is a probabilistic algorithm for doing existence tests
@@ -18,7 +18,7 @@ in less memory than a full list of keys would require.  The tradeoff to
 using Bloom filters is a certain configurable risk of false positives. 
 This module implements a simple Bloom filter with configurable capacity
 and false positive rate. Bloom filters were first described in a 1970 
-paper by Burton Bloom, see http://portal.acm.org/citation.cfm?id=362692&dl=ACM&coll=portal.
+paper by Burton Bloom, see L<http://portal.acm.org/citation.cfm?id=362692&dl=ACM&coll=portal>.
 
 =head1 SYNOPSIS
 
@@ -43,23 +43,24 @@ Create a brand new instance.  Allowable params are C<error_rate>, C<capacity>.
 
 =cut
 
-sub new {
+sub new 
+{
 	my ( $class, %params ) = @_;
 
 	my $self = 
-		{  
-			 # some defaults
-			 error_rate => 0.001, 
-		     capacity => 100, 
-		     
-		     %params,
-		     
-		     # internal data
-		     key_count => 0,
-		     filter_length => 0,
-		     num_hash_funcs => 0,
-		     salts => [],
-		  };
+	{  
+		 # some defaults
+		 error_rate => 0.001, 
+		 capacity 	=> 100, 
+			 
+		 %params,
+		 
+		 # internal data
+		 key_count 		=> 0,
+		 filter_length 	=> 0,
+		 num_hash_funcs => 0,
+		 salts 			=> [],
+	};
 	bless $self, $class;
 	$self->init();
 	return $self;
@@ -74,16 +75,17 @@ automatically by constructor.
 
 =cut
 
-sub init {
+sub init 
+{
 	my ( $self ) = @_;
 	
 	# some sanity checks
 	croak "Capacity must be greater than zero" unless $self->{capacity};
 	croak "Error rate must be greater than zero" unless $self->{error_rate};
 	croak "Error rate cannot exceed 1" unless $self->{error_rate} < 1;
-	
-	my ( $length, $num_funcs ) =
-		$self->_calculate_shortest_filter_length( $self->{capacity}, $self->{error_rate} );
+                                     	
+	my ( $length, $num_funcs ) = $self->_calculate_shortest_filter_length
+	    ($self->{capacity}, $self->{error_rate} );
 	
 	$self->{num_hash_funcs} = $num_funcs;
 	$self->{filter_length} = $length;
@@ -99,7 +101,6 @@ sub init {
 	$self->{filter} = pack( "b*", '0' x $self->{filter_length} );
 	
 	# make some blank vectors to use
-	$self->{blankmask} = pack( "b*", '0' x $self->{filter_length});
 	$self->{blankvec} = pack( "N", 0 ); 
 	
 	return 1;
@@ -151,7 +152,8 @@ Returns the number of 'on' bits in the filter
 
 =cut
 
-sub on_bits {
+sub on_bits 
+{
 	my ( $self ) = @_;
 	return unless $self->{filter};
 	return unpack( "%32b*",  $self->{filter})
@@ -163,7 +165,8 @@ Returns the list of salts used to create the hash functions
 
 =cut
 
-sub salts { 
+sub salts 
+{ 
 	my ( $self ) = @_;
 	return unless exists $self->{salts}
 		and ref $self->{salts}
@@ -186,49 +189,23 @@ if the number of keys in the filter exceeds the configured capacity.
 
 =cut
 
-sub add {
+sub add 
+{
 	my ( $self, @keys ) = @_;
-
+	
 	return unless @keys;
-	# Hash our list of emails into the empty filter
+	# Hash our list of keys into the empty filter
 	my @salts = @{ $self->{salts} }
-			or croak "No salts found, cannot make bitmask";
-
-	my $mask = $self->{blankmask};
+		or croak "No salts found, cannot make bitmask";
 	foreach my $key ( @keys ) {
-		if ($self->{key_count}++ > ($self->{capacity} - 1) ) {	
+	    if ($self->{key_count} >= $self->{capacity}) {	
 			carp "Exceeded filter capacity";
 			return;
-		}
-	
-		foreach my $salt ( @salts ){ 
-	
-			my $hash = sha1( $key, $salt );
-	
-			# blank 32 bit vector
-			my $vec = $self->{blankvec};
-	
-			# split the 160-bit hash into five 32-bit ints
-			# and XOR the pieces together
-	
-			my @pieces =  map { pack( "N", $_ ) } unpack("N*", $hash );
-			$vec = $_ ^ $vec foreach @pieces;	
-	
-			# Calculate bit offset by modding
-	
-			my $result = unpack( "N", $vec );
-	
-			
-			my $bit_offset = $result % $self->{filter_length};
-			vec( $mask, $bit_offset, 1 ) = 1;	
-			#undef $result;
-		}
-	
-
-		#my $mask = $self->_make_bitmask( $key );
-		
+	    }
+	    # flip the appropriate bits on
+        vec($self->{filter}, $_, 1) = 1 foreach @{$self->_get_cells($key)};  
+	    $self->{key_count}++;
 	}
-	$self->{filter} = $self->{filter} | $mask;
 	return 1;
 }
 
@@ -242,7 +219,8 @@ false values depending on whether there was a match.
 
 =cut 
 
-sub check {	
+sub check 
+{	
 
 	my ( $self, @keys ) = @_;
 	
@@ -251,8 +229,12 @@ sub check {
 
 	# A match occurs if every bit we check is on
 	foreach my $key ( @keys ) {
-		my $mask = $self->_make_bitmask( $key );		
-		push @result, ($mask eq ( $mask & $self->{filter} ));
+	    my $match = 1;
+	    foreach my $cell (@{$self->_get_cells($key)} ) {
+			$match = vec( $self->{filter}, $cell, 1 ) ;
+			last unless $match;
+	    }
+	    push @result, $match;
 	}
 	return ( wantarray() ? @result : $result[0] );
 }
@@ -275,7 +257,8 @@ to use in building the filter, where "optimum" means shortest vector length.
 
 =cut
 
-sub _calculate_shortest_filter_length {
+sub _calculate_shortest_filter_length 
+{
         my ( $self, $num_keys, $error_rate ) = @_;
         my $lowest_m;
         my $best_k = 1;
@@ -295,15 +278,15 @@ sub _calculate_shortest_filter_length {
 
 
 
-=item _make_bitmask KEY
+=item _get_cells KEY
 
-Given a key, hashes it using the list of salts and returns a bitmask
-the same length as the Bloom filter.  Note that Perl will pad the 
-bitmask out with zeroes so it's a muliple of 8.
+Given a key, hashes it using the list of salts and returns 
+an array of cell indexes corresponding to the key.
 
 =cut
 
-sub _make_bitmask {
+sub _get_cells 
+{
 
 	my ( $self, $key ) = @_;
 
@@ -311,8 +294,7 @@ sub _make_bitmask {
 	my @salts = @{ $self->{salts} }
 		or croak "No salts found, cannot make bitmask";
 
-	my $mask = $self->{blankmask};
-
+	my @cells;
 	foreach my $salt ( @salts ){ 
 
 		my $hash = sha1( $key, $salt );
@@ -323,19 +305,15 @@ sub _make_bitmask {
 		# split the 160-bit hash into five 32-bit ints
 		# and XOR the pieces together
 
-		my @pieces =  map { pack( "N", $_ ) } unpack("N*", $hash );
+		my @pieces =  map {pack( "N", $_ )} unpack("N*", $hash );
 		$vec = $_ ^ $vec foreach @pieces;	
 
 		# Calculate bit offset by modding
-
 		my $result = unpack( "N", $vec );
-
-		
 		my $bit_offset = $result % $self->{filter_length};
-		vec( $mask, $bit_offset, 1 ) = 1;	
-		undef $result;
+		push @cells, $bit_offset;
 	}
-	return $mask;
+	return \@cells;
 }
 
 
@@ -345,6 +323,10 @@ sub _make_bitmask {
 =head1 AUTHOR
 
 Maciej Ceglowski E<lt>maciej@ceglowski.comE<gt>
+
+=head1 CHANGELOG 
+
+Feb 2007 big speedup by Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (thanks!) 
 
 =head1 COPYRIGHT AND LICENSE
 
