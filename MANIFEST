@@ -4,6 +4,7 @@ Makefile.PL
 MANIFEST
 README
 t/add.t
+t/changes.t
 t/check.t
 t/defaults.t
 
