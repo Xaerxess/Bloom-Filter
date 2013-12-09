@@ -1,6 +1,22 @@
-Revision history for Perl extension Filter.
+Revision history for Perl module Bloom::Filter
 
-0.01  Fri Mar 26 10:45:51 2004
-	- original version; created by h2xs 1.21 with options
-		-XPA Filter
+1.0_01 Development
 
+ - updated revision history in Changes
+ - ...
+
+1.0 2007-02-10T14:28:50-08:00
+
+ - RT #6852: big speedup by Dmitriy Ryaboy
+
+0.03 2004-07-20T18:41:01-08:00
+
+ - minor changes
+
+0.02 2004-03-27T12:10:11-08:00
+
+ - first public version on CPAN
+
+0.01 2004-03-26T10:45:51-08:00
+
+ - original version; created by h2xs 1.21 with options -XPA Filter
