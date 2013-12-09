@@ -8,4 +8,3 @@ t/changes.t
 t/check.t
 t/defaults.t
 
-META.yml                                Module meta-data (added by MakeMaker)
