@@ -17,4 +17,3 @@ ok( $bf->add( @keys ), "Added key" );
 ok( $bf->check( "Hansel" ), "Found key 'Hansel' in filter" );
 ok( !$bf->check( "Herman" ), "Did not find key 'Herman'" );
 ok( $bf->check( "Gretel" ), "Found key 'Gretel' in filter" );
-

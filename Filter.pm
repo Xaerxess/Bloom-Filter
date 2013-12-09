@@ -8,16 +8,16 @@ use Digest::SHA1 qw/sha1 sha1_base64/;
 our $VERSION = '1.0';
 
 =head1 NAME
-    
+
 Bloom::Filter - Sample Perl Bloom filter implementation
-    
+
 =head1 DESCRIPTION
 
 A Bloom filter is a probabilistic algorithm for doing existence tests
 in less memory than a full list of keys would require.  The tradeoff to
-using Bloom filters is a certain configurable risk of false positives. 
+using Bloom filters is a certain configurable risk of false positives.
 This module implements a simple Bloom filter with configurable capacity
-and false positive rate. Bloom filters were first described in a 1970 
+and false positive rate. Bloom filters were first described in a 1970
 paper by Burton Bloom, see L<http://portal.acm.org/citation.cfm?id=362692&dl=ACM&coll=portal>.
 
 =head1 SYNOPSIS
@@ -35,7 +35,7 @@ paper by Burton Bloom, see L<http://portal.acm.org/citation.cfm?id=362692&dl=ACM
 
 =head1 CONSTRUCTORS
 
-=over 
+=over
 
 =item new %PARAMS
 
@@ -43,18 +43,18 @@ Create a brand new instance.  Allowable params are C<error_rate>, C<capacity>.
 
 =cut
 
-sub new 
+sub new
 {
 	my ( $class, %params ) = @_;
 
-	my $self = 
-	{  
+	my $self =
+	{
 		 # some defaults
-		 error_rate => 0.001, 
-		 capacity 	=> 100, 
-			 
+		 error_rate => 0.001,
+		 capacity 	=> 100,
+
 		 %params,
-		 
+
 		 # internal data
 		 key_count 		=> 0,
 		 filter_length 	=> 0,
@@ -75,34 +75,34 @@ automatically by constructor.
 
 =cut
 
-sub init 
+sub init
 {
 	my ( $self ) = @_;
-	
+
 	# some sanity checks
 	croak "Capacity must be greater than zero" unless $self->{capacity};
 	croak "Error rate must be greater than zero" unless $self->{error_rate};
 	croak "Error rate cannot exceed 1" unless $self->{error_rate} < 1;
-                                     	
+
 	my ( $length, $num_funcs ) = $self->_calculate_shortest_filter_length
 	    ($self->{capacity}, $self->{error_rate} );
-	
+
 	$self->{num_hash_funcs} = $num_funcs;
 	$self->{filter_length} = $length;
-	
+
 	# create some random salts;
 	my %collisions;
 	while ( scalar keys %collisions < $self->{num_hash_funcs} ) {
 		$collisions{rand()}++;
 	}
 	$self->{salts} = [ keys %collisions ];
-	
+
 	# make an empty filter
 	$self->{filter} = pack( "b*", '0' x $self->{filter_length} );
-	
+
 	# make some blank vectors to use
-	$self->{blankvec} = pack( "N", 0 ); 
-	
+	$self->{blankvec} = pack( "N", 0 );
+
 	return 1;
 }
 
@@ -111,7 +111,7 @@ sub init
 
 =head1 ACCESSORS
 
-=over 
+=over
 
 =item capacity
 
@@ -152,21 +152,21 @@ Returns the number of 'on' bits in the filter
 
 =cut
 
-sub on_bits 
+sub on_bits
 {
 	my ( $self ) = @_;
 	return unless $self->{filter};
 	return unpack( "%32b*",  $self->{filter})
 }
 
-=item salts 
+=item salts
 
 Returns the list of salts used to create the hash functions
 
 =cut
 
-sub salts 
-{ 
+sub salts
+{
 	my ( $self ) = @_;
 	return unless exists $self->{salts}
 		and ref $self->{salts}
@@ -189,21 +189,21 @@ if the number of keys in the filter exceeds the configured capacity.
 
 =cut
 
-sub add 
+sub add
 {
 	my ( $self, @keys ) = @_;
-	
+
 	return unless @keys;
 	# Hash our list of keys into the empty filter
 	my @salts = @{ $self->{salts} }
 		or croak "No salts found, cannot make bitmask";
 	foreach my $key ( @keys ) {
-	    if ($self->{key_count} >= $self->{capacity}) {	
+	    if ($self->{key_count} >= $self->{capacity}) {
 			carp "Exceeded filter capacity";
 			return;
 	    }
 	    # flip the appropriate bits on
-        vec($self->{filter}, $_, 1) = 1 foreach @{$self->_get_cells($key)};  
+        vec($self->{filter}, $_, 1) = 1 foreach @{$self->_get_cells($key)};
 	    $self->{key_count}++;
 	}
 	return 1;
@@ -217,13 +217,13 @@ Checks the provided key list against the Bloom filter,
 and returns a list of equivalent length, with true or
 false values depending on whether there was a match.
 
-=cut 
+=cut
 
-sub check 
-{	
+sub check
+{
 
 	my ( $self, @keys ) = @_;
-	
+
 	return unless @keys;
 	my @result;
 
@@ -257,14 +257,14 @@ to use in building the filter, where "optimum" means shortest vector length.
 
 =cut
 
-sub _calculate_shortest_filter_length 
+sub _calculate_shortest_filter_length
 {
         my ( $self, $num_keys, $error_rate ) = @_;
         my $lowest_m;
         my $best_k = 1;
 
         foreach my $k ( 1..100 ) {
-                my $m = (-1 * $k * $num_keys) / 
+                my $m = (-1 * $k * $num_keys) /
                         ( log( 1 - ($error_rate ** (1/$k))));
 
                 if ( !defined $lowest_m or ($m < $lowest_m) ) {
@@ -274,18 +274,18 @@ sub _calculate_shortest_filter_length
         }
         $lowest_m = int( $lowest_m ) + 1;
         return ( $lowest_m, $best_k );
-} 
+}
 
 
 
 =item _get_cells KEY
 
-Given a key, hashes it using the list of salts and returns 
+Given a key, hashes it using the list of salts and returns
 an array of cell indexes corresponding to the key.
 
 =cut
 
-sub _get_cells 
+sub _get_cells
 {
 
 	my ( $self, $key ) = @_;
@@ -295,7 +295,7 @@ sub _get_cells
 		or croak "No salts found, cannot make bitmask";
 
 	my @cells;
-	foreach my $salt ( @salts ){ 
+	foreach my $salt ( @salts ){
 
 		my $hash = sha1( $key, $salt );
 
@@ -306,7 +306,7 @@ sub _get_cells
 		# and XOR the pieces together
 
 		my @pieces =  map {pack( "N", $_ )} unpack("N*", $hash );
-		$vec = $_ ^ $vec foreach @pieces;	
+		$vec = $_ ^ $vec foreach @pieces;
 
 		# Calculate bit offset by modding
 		my $result = unpack( "N", $vec );
@@ -324,9 +324,9 @@ sub _get_cells
 
 Maciej Ceglowski E<lt>maciej@ceglowski.comE<gt>
 
-=head1 CHANGELOG 
+=head1 CHANGELOG
 
-Feb 2007 big speedup by Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (thanks!) 
+Feb 2007 big speedup by Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (thanks!)
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -338,4 +338,3 @@ of the GNU Public License (GPL).
 =cut
 
 1;
-

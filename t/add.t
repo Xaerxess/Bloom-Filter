@@ -21,7 +21,6 @@ is( $bf->key_count(), 2, "Key count incremented" );
 
 for (1..98) { $bf->add( $_ ) };
 
-
 ok( !$bf->add( "last key" ), "Capacity exceeded" );
 
 $bf = Bloom::Filter->new();
