@@ -3,9 +3,10 @@ package Bloom::Filter;
 use strict;
 use warnings;
 use Carp;
-use Digest::SHA1 qw/sha1 sha1_base64/;
+use Digest::SHA qw(sha1);
 
-our $VERSION = '1.0';
+our $VERSION = '1.0_01';
+$VERSION = eval $VERSION;
 
 =head1 NAME
 

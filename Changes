@@ -2,6 +2,7 @@ Revision history for Perl module Bloom::Filter
 
 1.0_01 Development
 
+ - RT #67716: used Digest::SHA instead of Digest::SHA1
  - updated revision history in Changes
  - ...
 
