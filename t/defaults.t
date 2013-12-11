@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-use Test::More qw/no_plan/;
+use Test::More;
 
 use Bloom::Filter;
 
@@ -17,3 +17,5 @@ my $bf2 = Bloom::Filter->new( capacity => 1092, error_rate => .00001);
 is( $bf2->capacity(), 1092, "Custom capacity ok" );
 is( $bf2->error_rate(), 0.00001, "Custom error rate ok" );
 is( $bf2->length(), 26172, "Length calculated properly" );
+
+done_testing();

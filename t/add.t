@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-use Test::More qw/no_plan/;
+use Test::More;
 
 use Bloom::Filter;
 
@@ -26,3 +26,5 @@ ok( !$bf->add( "last key" ), "Capacity exceeded" );
 $bf = Bloom::Filter->new();
 ok( $bf->add( @keys ), "Added multiple keys" );
 is( $bf->key_count(), 2, "Correct key count" );
+
+done_testing();
