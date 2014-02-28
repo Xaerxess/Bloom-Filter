@@ -8,6 +8,8 @@ use Digest::SHA qw(sha1);
 our $VERSION = '1.0_01';
 $VERSION = eval $VERSION;
 
+=encoding UTF-8
+
 =head1 NAME
 
 Bloom::Filter - Sample Perl Bloom filter implementation
@@ -67,7 +69,6 @@ sub new
 	return $self;
 }
 
-
 =item init
 
 Calculates the best number of hash functions and optimum filter length,
@@ -107,7 +108,6 @@ sub init
 	return 1;
 }
 
-
 =back
 
 =head1 ACCESSORS
@@ -146,7 +146,6 @@ Returns the number of items currently stored in the filter
 
 sub key_count { $_[0]->{key_count} };
 
-
 =item on_bits
 
 Returns the number of 'on' bits in the filter
@@ -175,7 +174,6 @@ sub salts
 
 	return @{ $self->{salts} };
 }
-
 
 =back
 
@@ -210,8 +208,6 @@ sub add
 	return 1;
 }
 
-
-
 =item check @KEYS
 
 Checks the provided key list against the Bloom filter,
@@ -240,15 +236,11 @@ sub check
 	return ( wantarray() ? @result : $result[0] );
 }
 
-
-
-
 =back
 
 =head1 INTERNAL METHODS
 
 =over
-
 
 =item _calculate_shortest_filter_length CAPACITY ERR_RATE
 
@@ -276,8 +268,6 @@ sub _calculate_shortest_filter_length
         $lowest_m = int( $lowest_m ) + 1;
         return ( $lowest_m, $best_k );
 }
-
-
 
 =item _get_cells KEY
 
@@ -317,17 +307,16 @@ sub _get_cells
 	return \@cells;
 }
 
-
-
 =back
 
 =head1 AUTHOR
 
-Maciej Ceglowski E<lt>maciej@ceglowski.comE<gt>
+Originally written by Maciej Ceglowski E<lt>maciej@ceglowski.comE<gt>.
+Currently maintained by Grzegorz Rożniecki E<lt>xaerxess@gmail.comE<gt>.
 
-=head1 CHANGELOG
+=head1 CONTRIBUTORS
 
-Feb 2007 big speedup by Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (thanks!)
+Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (big speedup in February 2007, thanks!)
 
 =head1 COPYRIGHT AND LICENSE
 
