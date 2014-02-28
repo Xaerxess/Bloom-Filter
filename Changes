@@ -1,10 +1,13 @@
 Revision history for Perl module Bloom::Filter
 
-1.0_01 Development
+1.1 2014-02-28T16:00:00+0100 XAERXESS
 
+ - Grzegorz Rożniecki (XAERXESS) has taken over maintenance
  - RT #67716: used Digest::SHA instead of Digest::SHA1
- - updated revision history in Changes
- - ...
+ - updated revision history in Changes (as per CPAN::Changes::Spec)
+ - cleaned up documentation
+ - moved Filter.pm to lib/Bloom/Filter.pm
+ - tweaked Makefile.PL
 
 1.0 2007-02-10T14:28:50-08:00
 

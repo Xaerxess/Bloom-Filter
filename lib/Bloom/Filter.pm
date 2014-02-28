@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use Digest::SHA qw(sha1);
 
-our $VERSION = '1.0_01';
+our $VERSION = '1.1';
 $VERSION = eval $VERSION;
 
 =encoding UTF-8
