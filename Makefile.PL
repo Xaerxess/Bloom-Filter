@@ -5,7 +5,7 @@ use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
     NAME => 'Bloom::Filter',
-    VERSION_FROM => 'Filter.pm',
+    VERSION_FROM => 'lib/Bloom/Filter.pm',
     MIN_PERL_VERSION => '5.6.0',
     PREREQ_PM => {
         'Carp' => 0,
@@ -13,7 +13,7 @@ my %WriteMakefileArgs = (
         'strict' => 0,
         'warnings' => 0,
     },
-    ABSTRACT_FROM => 'Filter.pm',
+    ABSTRACT_FROM => 'lib/Bloom/Filter.pm',
     AUTHOR => 'Maciej Ceglowski <maciej@ceglowski.com>',
     LICENSE => 'gpl',
     META_MERGE => {
