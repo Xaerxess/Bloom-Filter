@@ -15,7 +15,7 @@ my %WriteMakefileArgs = (
     },
     ABSTRACT_FROM => 'lib/Bloom/Filter.pm',
     AUTHOR => 'Maciej Ceglowski <maciej@ceglowski.com>',
-    LICENSE => 'gpl',
+    LICENSE => 'gpl_2',
     META_MERGE => {
         'meta-spec' => { version => 2 },
         resources => {
