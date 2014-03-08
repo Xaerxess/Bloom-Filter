@@ -1,5 +1,10 @@
 Revision history for Perl module Bloom::Filter
 
+1.2 2014-03-08T21:30:00+0100 XAERXESS
+
+ - fixed GPL version in metadata
+ - included LICENSE file in MANIFEST
+
 1.1 2014-02-28T16:00:00+0100 XAERXESS
 
  - Grzegorz Rożniecki (XAERXESS) has taken over maintenance
