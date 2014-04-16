@@ -25,7 +25,7 @@ paper by Burton Bloom, see L<http://portal.acm.org/citation.cfm?id=362692&dl=ACM
 
 =head1 SYNOPSIS
 
-	use Bloom::Filter
+	use Bloom::Filter;
 
 	my $bf = Bloom::Filter->new( capacity => 10, error_rate => .001 );
 
