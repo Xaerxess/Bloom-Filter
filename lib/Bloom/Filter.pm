@@ -323,7 +323,7 @@ Dmitriy Ryaboy E<lt>dmitriy.ryaboy@ask.comE<gt> (big speedup in February 2007, t
 (c) 2004 Maciej Ceglowski
 
 This is free software, distributed under version 2
-of the GNU Public License (GPL).
+of the GNU General Public License (GPL).
 
 =cut
 
